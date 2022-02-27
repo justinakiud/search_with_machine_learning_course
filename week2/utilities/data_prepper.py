@@ -233,32 +233,6 @@ class DataPrepper:
                                                 self.ltr_store_name,
                                                 size=len(query_doc_ids), terms_field=terms_field)
 
-
-        response = self.opensearch.search(body=log_query, index=self.index_name)
-        if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
-            feature_results = {}  
-            feature_results["doc_id"] = []  
-            feature_results["query_id"] = []  
-            feature_results["sku"] = []
-            for hit in response['hits']['hits']:
-                feature_results["doc_id"].append(int(hit['_id']))
-                feature_results["sku"].append(int(hit['_source']['sku'][0]))
-                feature_results["query_id"].append(int(query_id))  
-                features = hit['fields']['_ltrlog'][0]['log_entry']
-                for feature in features:
-                    feature_name = feature.get('name')
-                    feature_value = feature.get('value', 0)
-                    feature_values = feature_results.get(feature_name)
-                    if feature_values is None:
-                        feature_values = []
-                        feature_results[feature_name] = feature_values
-                    feature_values.append(feature_value)
-            frame = pd.DataFrame(feature_results)
-            return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})  
-        no_results[key] = query_doc_ids
-        return None
-
-
         # IMPLEMENT_START --
         response = self.opensearch.search(body=log_query, index=self.index_name)
         hits= response["hits"]["hits"]
