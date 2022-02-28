@@ -265,20 +265,15 @@ class DataPrepper:
                     name, value = entry["name"], entry.get("value", 0)
                     feature_results[name].append(value)
 
-                    values = feature_results.get(name)
-                    if values is None:
-                        values = []
-                        feature_results[name] = values
-                    values.append(value)
-
             frame = pd.DataFrame(feature_results)
             return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64', 'salePrice': 'float', 
-            'name_match': 'float', 'name_phrase_match': 'float', 'name_hyphens_min_df': 'float', 'regularPrice': 'float',
-            'salesRankShortTerm': 'int64', 'salesRankMediumTerm': 'int64', 'salesRankLongTerm': 'int64', 'click_prior': 'int64'})
+        'name_match': 'float', 'name_phrase_match': 'float', 'name_hyphens_min_df': 'float', 'regularPrice': 'float',
+        'salesRankShortTerm': 'int64', 'salesRankMediumTerm': 'int64', 'salesRankLongTerm': 'int64', 'click_prior': 'int64'})
 
         no_results[key] = query_doc_ids
         return None
         # IMPLEMENT_END
+    
 
     # Can try out normalizing data, but for XGb, you really don't have to since it is just finding splits
     def normalize_data(self, ranks_features_df, feature_set, normalize_type_map):
