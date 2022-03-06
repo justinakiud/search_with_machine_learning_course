@@ -7,6 +7,7 @@ from flask import (
 )
 import fasttext
 import json
+import nltk
 
 bp = Blueprint('documents', __name__, url_prefix='/documents')
 
@@ -26,5 +27,17 @@ def annotate():
                 if item == "name":
                     if syns_model is not None:
                         print("IMPLEMENT ME: call nearest_neighbors on your syn model and return it as `name_synonyms`")
+                        synonym_set = []
+                        tokens = word_tokenize(the_text)
+                        tokens = [word for word in tokens if word.isalpha()]
+                        tokens = [word.lower() for word in tokens]
+                        tokens = [stemmer.stem(word) for word in tokens]
+                        for token in tokens:
+                            results = syns_model.get_nearest_neighbors(token)
+                            for result in results:
+                                if result[0] >= 0.9:
+                                    synonym_set.append(result[1])
+                                    
+                        response['name_synonyms'] = synonym_set
         return jsonify(response)
     abort(415)
