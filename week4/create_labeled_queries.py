@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import csv
+from nltk.tokenize import word_tokenize
 
 # Useful if you want to perform stemming.
 import nltk
@@ -44,14 +45,44 @@ for child in root:
         parents.append(cat_path_ids[-2])
 parents_df = pd.DataFrame(list(zip(categories, parents)), columns =['category', 'parent'])
 
+# Convert queries to lowercase, and optionally implement other normalization, like stemming.
+def transform_queries(query):
+    tokens = word_tokenize(query)
+    tokens = [word for word in tokens if word.isalnum()]
+    tokens = [word.lower() for word in tokens]
+    tokens = [stemmer.stem(word) for word in tokens]
+    transformed_query = " ".join(tokens)
+    return transformed_query
+
 # Read the training data into pandas, only keeping queries with non-root categories in our category tree.
 df = pd.read_csv(queries_file_name)[['category', 'query']]
+df = df.iloc[:100000]
+df['query'] = df['query'].apply(transform_queries)
 df = df[df['category'].isin(categories)]
+df = df.dropna()
 
-# IMPLEMENT ME: Convert queries to lowercase, and optionally implement other normalization, like stemming.
+df['n_queries_per_category'] = df.groupby('category')['query'].transform(len)
 
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
+def get_parent_code(category_code):
+    if category_code == root_category_id:
+        return category_code
+    else:
+        return parents_df[parents_df.category == category_code]['parent'].values[0]
 
+
+df['parent_code'] = df['category'].apply(get_parent_code)
+
+MIN_COUNT = 1000
+conditions = [
+    (df['n_queries_per_category'] <= MIN_COUNT),
+    (df['n_queries_per_category'] > MIN_COUNT)
+    ]
+values = [df['parent_code'], df['category']]
+
+df['category'] = np.select(conditions, values)
+
+print(df.category.nunique())
 # Create labels in fastText format.
 df['label'] = '__label__' + df['category']
 

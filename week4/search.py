@@ -1,6 +1,11 @@
 #
 # The main search hooks for the Search Flask application.
 #
+import fasttext
+from nltk.tokenize import word_tokenize
+import nltk
+stemmer = nltk.stem.PorterStemmer()
+
 from flask import (
     Blueprint, redirect, render_template, request, url_for, current_app
 )
@@ -56,9 +61,29 @@ def process_filters(filters_input):
 
     return filters, display_filters, applied_filters
 
+def transform_user_query(query):
+    tokens = word_tokenize(query)
+    tokens = [word for word in tokens if word.isalnum()]
+    tokens = [word.lower() for word in tokens]
+    tokens = [stemmer.stem(word) for word in tokens]
+    transformed_query = " ".join(tokens)
+    return transformed_query
+
+
 def get_query_category(user_query, query_class_model):
-    print("IMPLEMENT ME: get_query_category")
-    return None
+    user_query = transform_user_query(user_query)
+    category_code, score = query_class_model.predict(user_query, 5)
+    category_code = [code.replace("__label__", "") for code in category_code]
+
+    predictions = zip(category_code, score)
+
+    category_codes = []
+    for (category_code, score) in predictions:
+        if score > 0.5:
+            category_codes.append(category_code)
+    
+    return category_codes
+
 
 
 @bp.route('/query', methods=['GET', 'POST'])
@@ -137,9 +162,21 @@ def query():
 
     query_class_model = current_app.config["query_model"]
     query_category = get_query_category(user_query, query_class_model)
+
+    print("predicted_categories", query_category)
+    print("user_query", user_query)
+    if query_category and user_query != "*":
+        print("ADDING CATEGORIES FILTER")
+        query_obj["query"]["bool"]["filter"] = [{
+            "terms": {
+                "categoryPathIds.keyword": query_category
+            }
+        }]
+
     if query_category is not None:
-        print("IMPLEMENT ME: add this into the filters object so that it gets applied at search time.  This should look like your `term` filter from week 1 for department but for categories instead")
+        query_categories = get_query_category(user_query, query_class_model)
     #print("query obj: {}".format(query_obj))
+
     response = opensearch.search(body=query_obj, index=current_app.config["index_name"], explain=explain)
     # Postprocess results here if you so desire
 
